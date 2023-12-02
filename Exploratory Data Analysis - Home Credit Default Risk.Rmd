@@ -1,0 +1,114 @@
+---
+title: "Exploratory Data Analysis - Home Credit Default Risk"
+author: "Tom Kingston"
+date: "2023-10-06"
+output: 
+  html_document:
+    toc: true
+  
+---
+### Introduction
+In the context of the Home Credit Default Risk project, we are confronted with a significant business challenge: the need to assess and mitigate the risk of loan default among our clients. The problem is two-fold: a considerable portion of our loan applicants fall into the high-risk category, resulting in substantial financial losses for our organization. This not only impacts our profitability but also hinders our mission to provide accessible financial services to a broader range of individuals. To address this, we seek a solution that will enable us to identify creditworthy applicants more accurately, reduce default rates, and ultimately enhance our financial stability.
+
+### Description of data
+We was provided with a few data sets from the Home Credit Default Risk Team. The dataset comprises a collection of CSV files, each with a unique purpose in the realm of Home Credit loan default prediction. The central dataset, "application_{train|test}.csv," is divided into training and test sets and serves as the bedrock for static data on loan applications. Each row in this dataset represents an individual loan application, with the "TARGET" variable indicating loan default status, exclusively present in the training set.
+Supplementing this primary dataset are several others, including "bureau.csv" and "bureau_balance.csv," which offer insights into clients' past credit histories reported to Credit Bureau, down to monthly balance snapshots of previous credits. "POS_CASH_balance.csv" and "credit_card_balance.csv" delve into the monthly balance records of point-of-sale, cash, and credit card loans, respectively, providing a granular view of client credit usage. "previous_application.csv" compiles records of all prior Home Credit loan applications from clients in the sample, while "installments_payments.csv" captures repayment histories, encompassing successful payments and missed ones. Finally, "HomeCredit_columns_description.csv" serves as a reference guide, offering descriptions for the columns present in the various data files, facilitating a deeper understanding of the dataset's variables. Together, these datasets form a comprehensive resource for developing predictive models to assess loan default risk in the context of Home Credit.
+
+### Load data
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(naniar)  # Use naniar for handling missing data
+
+# Load the training data
+train_data <- read.csv("application_train.csv")
+
+# Load the test data
+test_data <- read.csv("application_test.csv")
+
+# Load transactional data (e.g., bureau.csv)
+bureau_data <- read.csv("bureau.csv")
+```
+
+### View Summary of data
+```{r}
+summary(train_data)
+summary(test_data)
+summary(bureau_data)
+```
+
+### Task 1 Explore the target variable analysis:
+```{r}
+# Task 1: Explore the Target Variable
+target_counts <- table(train_data$TARGET)
+print("Distribution of TARGET variable:")
+print(target_counts)
+```
+We examined the distribution of the target variable, a pivotal step in assessing the balance of classes for a binary classification problem. The results unveiled two distinct classes within the target variable:
+- Class 0: Comprising a substantial 282,686 instances, this class represents clients who did not encounter payment difficulties, signifying no default.
+- Class 1: In contrast, this class includes 24,825 instances, representing clients who did experience payment difficulties, indicating default.
+These findings highlight a pronounced class imbalance within the dataset, with a significantly larger number of clients categorized as non-default (Class 0) compared to those in the default category (Class 1). To build accurate predictive models, addressing this imbalance may necessitate employing specialized techniques like oversampling or undersampling to mitigate its potential impact on model performance.
+
+### Task 2 Explore the relationship between target and predictors analysis: 
+```{r}
+# Task 2: Explore the Relationship Between "TARGET" and Predictors
+# Example: Histogram of Age vs. "TARGET"
+ggplot(train_data, aes(x=DAYS_BIRTH, fill=factor(TARGET))) +
+  geom_histogram(binwidth=5) +
+  labs(title="Distribution of Age by TARGET") +
+  xlab("DAYS_BIRTH") +
+  ylab("AMT_INCOME_TOTAL")
+```
+As you can see with the graph than the data showes that those that have income is a factor for stuggling to pay off their loan. As you can see that all ones that strugle are on the lower section of the graph. Also, it appears that age has little factor to determine if an applicant will pay their loan.
+
+### Task 3 Explore Missing Data and Data Cleaning analysis:
+```{r}
+# Task 3: Explore Missing Data and Data Cleaning
+# Check for missing data in training and test datasets
+missing_train <- sum(is.na(train_data))
+missing_test <- sum(is.na(test_data))
+print("Missing data in training dataset:")
+print(missing_train)
+print("Missing data in test dataset:")
+print(missing_test)
+```
+These results indicate the extent of missing data in both the training and test datasets:
+- In the training dataset, there are 8,388,094 missing values across all columns. This suggests that a substantial portion of the data is incomplete, potentially   requiring data imputation or careful handling during analysis.
+- In the test dataset, there are 1,285,385 missing values. While this dataset typically represents unseen data for predictive modeling, it's important to note the   extent of missing values, as it may affect the application of models trained on the training dataset to new, unseen data.
+These results highlight the need for addressing missing data, whether through imputation techniques, data cleaning, or considering how to handle these missing values during modeling. Failure to handle missing data appropriately can lead to biased or inaccurate results in predictive models.
+
+### Task 4 data quality check analysis
+```{r}
+# Task 4: Data Quality Check
+# Example: Check if any income values are negative
+negative_income_count <- sum(train_data$AMT_INCOME_TOTAL < 0)
+cat("Number of negative income values:", negative_income_count, "\n")
+```
+This finding suggests that there are no instances of negative income values within the dataset, aligning with our expectations regarding income data. It's essential to recognize that, in a financial dataset like this, negative income values would be unusual and could signal data quality issues or errors.
+
+The absence of negative income values provides confidence that the data is consistent with the financial domain's standards, where income is generally expected to be non-negative. As a college student, understanding and validating the quality of data is crucial, and this result indicates that the dataset appears to be reliable in this specific aspect. However, it's still essential to conduct a comprehensive data quality assessment to address potential issues in other areas of the dataset.
+
+### Task 5 Data transformation
+```{r}
+# Task 5: Data Transformation
+# Example: Encoding categorical variables
+train_data$CODE_GENDER <- as.factor(train_data$CODE_GENDER)
+```
+
+### Task 6 Join transactional data
+```{r}
+# Task 6: Join with Transactional Data
+# Join transactional data (e.g., bureau.csv) with application data
+joined_data <- inner_join(train_data, bureau_data, by="SK_ID_CURR")
+```
+
+### Task 7 Explore johned transactional data analysis: 
+```{r}
+# Task 7: Explore Joined Transactional Data
+# Example: Correlation heatmap
+correlation_matrix <- cor(joined_data[, c("TARGET", "AMT_INCOME_TOTAL")], use="complete.obs")
+print("Correlation Matrix:")
+print(correlation_matrix)
+```
+This reveals the correlations between the "TARGET" variable (representing loan default) and the "AMT_INCOME_TOTAL" variable (representing the total income of clients). In this specific case, The correlation between "TARGET" and "AMT_INCOME_TOTAL" is approximately -0.00028. This value is very close to zero, indicating an extremely weak and almost negligible correlation between the target variable (loan default) and the total income of clients. In other words, there is almost no linear relationship between these two variables.
+These results suggest that the total income of clients, as represented by "AMT_INCOME_TOTAL," is not a strong linear predictor of loan default in this dataset. While correlation does not capture all potential relationships between variables, this finding implies that other factors or variables may play a more significant role in predicting loan default, and further exploration or modeling is needed to identify such predictors.
